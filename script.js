@@ -6,7 +6,7 @@ function operate(operator, a, b) {
     a = Number(a);
     b = Number(b);
     let result = 0;
-    
+
     if(operator === "+") {
         result = add(a ,b);
     }
@@ -22,6 +22,8 @@ function operate(operator, a, b) {
     if(operator === "*") {
         result = multiply(a ,b);
     }
+
+    return result;
 }
 
 function add(a, b) {
