@@ -2,16 +2,14 @@ const buttonsContainer = document.querySelector(".buttons-container");
 const displayText = document.querySelector(".display-text");
 const OPERATORS = "+-/*"
 const NUMBERS = "0987654321"
+const MAX_DISPLAY_LENGTH = 12;
+const ERROR_MESSAGE = "Invalid";
 let displayedNum = "";
 let storedNum = null;
 let shouldClearDisplay = false;
-let currentOperator;
+let currentOperator = null;
 let calculatorIsShowingResult = false;
-
-
-function updateStoredNum(num) {
-    storedNum = Number(num);
-}
+let previousButtonText = null;
 
 function resetCalculator() {
     displayedNum = ""
@@ -19,6 +17,7 @@ function resetCalculator() {
     shouldClearDisplay = false;
     currentOperator = null;
     calculatorIsShowingResult = false;
+    previousButtonText = null;
 }
 function clear() {
     resetCalculator();
@@ -29,6 +28,10 @@ function updateDisplay() {
     displayText.textContent = displayedNum;
 }
 
+function displayError() {
+    displayText.textContent = ERROR_MESSAGE;
+}
+
 function clearDisplay() {
     displayedNum = "";
     shouldClearDisplay = false;
@@ -36,25 +39,19 @@ function clearDisplay() {
 }
 
 function operate(operator, a, b) {
-    let result = 0;
 
-    if(operator === "+") {
-        result = add(a ,b);
+    switch (operator) {
+        case "+":
+            return add(a ,b);
+        case "-": 
+            return subtract(a ,b);
+        case "/":
+            return divide(a ,b);
+        case "*":
+            return multiply(a ,b);
+        default:
+            return 0;
     }
-
-    if(operator === "-") {
-        result = subtract(a ,b);
-    }
-
-    if(operator === "/") {
-        result = divide(a ,b);
-    }
-
-    if(operator === "*") {
-        result = multiply(a ,b);
-    }
-
-    return result;
 }
 
 function add(a, b) {
@@ -74,8 +71,23 @@ function multiply(a, b) {
 }
 
 function calculateResult() {
-    console.log(`calculated: ${storedNum} ${currentOperator} ${displayedNum} = `);
     return operate(currentOperator, storedNum, Number(displayedNum));
+}
+
+function calculateValidatedResult() {
+    const result = Number(calculateResult().toFixed(8));
+
+    if (!isResultValid(result)) {
+        clear();
+        displayError();
+        return;
+    }
+
+    return result;
+}
+
+function isResultValid(result) {
+    return Number.isFinite(result);
 }
 
 function displayResult(result) {
@@ -84,66 +96,90 @@ function displayResult(result) {
 }
 
 function handleNumber(num) {
-    if(shouldClearDisplay) {
+    if (shouldClearDisplay) {
         clearDisplay();
     }
 
-    if(calculatorIsShowingResult) {
+    if (calculatorIsShowingResult) {
         resetCalculator();
     }
 
-    displayedNum += num;
+    if (displayedNum.length >= MAX_DISPLAY_LENGTH) {
+        return;
+    }
+
+    if (displayedNum === "0") {
+        displayedNum = num;
+    } else {
+        displayedNum += num;
+    }
+
     updateDisplay();
-    console.log(`current stored num ${storedNum}`);
 }
 
 function handleOperator(operator) {
+    
+    if (displayedNum === '') {
+        return;
+    }
 
-    if(storedNum !== null && !calculatorIsShowingResult) {
-        const result = calculateResult();
-        updateStoredNum(result);
+    if (storedNum !== null && !calculatorIsShowingResult) {
+        const result = calculateValidatedResult();
+        
+        if (result === undefined) {
+            return;
+        }
+
+        storedNum = result;
         displayResult(result);
     } else {
-        updateStoredNum(displayedNum);
+        storedNum = Number(displayedNum);
         calculatorIsShowingResult = false;
     }
     
     currentOperator = operator;
-    shouldClearDisplay = true;
-    console.log(`operator pressed: ${currentOperator}`);
-    console.log(`current stored num ${storedNum}`);
+    shouldClearDisplay = true
 }
 
 function handleEquals() {
-    if (storedNum === null) {
+    if (storedNum === null || currentOperator === null) {
         return;
     }
 
-    const result = calculateResult();
-    updateStoredNum(result);
+    const result = calculateValidatedResult();
+    
+    if (result === undefined) {
+        return;
+    }
+    
+    storedNum = result;
     displayResult(result);
-
     shouldClearDisplay = true;
     calculatorIsShowingResult = true;
-    
-    console.log(`current stored num ${storedNum}`);
-    console.log(`current displayeed num ${displayedNum}`);
 }
 
 function handleButtonClick(event) {
-    if(event.target.tagName !== "BUTTON") return;
-    
+    if (event.target.tagName !== "BUTTON") return;
     const buttonText = event.target.textContent;
     
     if (NUMBERS.includes(buttonText)) {
         handleNumber(buttonText);
-    } else if (buttonText== 'clear') {
+    } else if (buttonText === 'clear') {
         clear()
     } else if (OPERATORS.includes(buttonText)) {
+        if (OPERATORS.includes(previousButtonText)) {
+            currentOperator = buttonText;
+            return;
+        }
         handleOperator(buttonText);
     } else if (buttonText === "=") {
+        if (previousButtonText === "=") {
+            return;
+        }
         handleEquals()
-    }
+    } 
+
+    previousButtonText = buttonText; 
 }
 
 buttonsContainer.addEventListener("click", handleButtonClick);
